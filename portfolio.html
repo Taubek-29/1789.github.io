@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Генератор Портфолио</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+    <style>
+        :root {
+            --primary: #6e8efb;
+            --secondary: #a777e3;
+            --dark: #1a1a1a;
+            --light: #f8f9fa;
+            --white: #ffffff;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+
+        /* ... (ваши текущие стили) ... */
+
+        /* Анимации */
+        .slide-enter {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        .slide-enter-active {
+            transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        /* Режим презентации */
+        body.presentation-mode {
+            overflow: hidden;
+            background: #000;
+        }
+        body.presentation-mode .slide {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            margin: 0;
+            border-radius: 0;
+            z-index: 1000;
+            display: none;
+        }
+        body.presentation-mode .slide.active {
+            display: block;
+            animation: slideIn 0.6s forwards;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(50px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .presentation-controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            z-index: 1001;
+            gap: 10px;
+        }
+        body.presentation-mode .presentation-controls {
+            display: flex;
+        }
+
+        /* AI-генератор */
+        .ai-loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1002;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Добавляем кнопки для новых функций -->
+    <button id="presentation-btn" class="control-btn" style="bottom: 170px;">
+        <i class="fas fa-expand"></i>
+    </button>
+    <button id="ai-generate-btn" class="control-btn" style="bottom: 230px;">
+        <i class="fas fa-robot"></i>
+    </button>
+
+    <!-- Панель управления презентацией -->
+    <div class="presentation-controls">
+        <button id="prev-slide" class="control-btn"><i class="fas fa-arrow-left"></i></button>
+        <button id="next-slide" class="control-btn"><i class="fas fa-arrow-right"></i></button>
+        <button id="exit-presentation" class="control-btn"><i class="fas fa-times"></i></button>
+    </div>
+
+    <!-- Индикатор загрузки AI -->
+    <div class="ai-loading" id="ai-loading">
+        <div>
+            <i class="fas fa-spinner fa-spin"></i> Идет генерация текста...
+        </div>
+    </div>
+
+    <script>
+        // ===================== AI-ГЕНЕРАЦИЯ =====================
+        async function generateWithAI(prompt) {
+            // Эмуляция API (в реальности используйте OpenAI API)
+            const responses = {
+                "приветствие": [
+                    "Привет! Меня зовут [Имя]. Я [Профессия] с опытом в [Сфера].",
+                    "Рад вас видеть! Я [Имя], эксперт в области [Сфера].",
+                    "Добрый день! Я [Имя], [Профессия] с 5+ годами опыта."
+                ],
+                "о себе": [
+                    "Я специализируюсь на [Навыки]. Мой подход сочетает креативность и техническую экспертизу.",
+                    "За плечами [X] успешных проектов. Использую современные технологии: [Навыки].",
+                    "Моя миссия - создавать качественные продукты, решающие реальные проблемы."
+                ],
+                "проект": [
+                    "Проект демонстрирует мое умение работать с [Технологии]. Результат: +30% эффективности.",
+                    "Клиент остался доволен сроком и качеством выполнения проекта.",
+                    "Инновационное решение, получившее положительные отзывы."
+                ]
+            };
+
+            return new Promise(resolve => {
+                setTimeout(() => {
+                    let result = "";
+                    if (prompt.includes("приветствие")) {
+                        result = responses["приветствие"][Math.floor(Math.random() * 3)];
+                    } else if (prompt.includes("о себе")) {
+                        result = responses["о себе"][Math.floor(Math.random() * 3)];
+                    } else {
+                        result = responses["проект"][Math.floor(Math.random() * 3)];
+                    }
+                    resolve(result.replace("[Имя]", localStorage.getItem("userName") || "Иван Иванов"));
+                }, 1500);
+            });
+        }
+
+        // ===================== РЕЖИМ ПРЕЗЕНТАЦИИ =====================
+        let currentSlide = 0;
+
+        function startPresentation() {
+            document.body.classList.add('presentation-mode');
+            showSlide(0);
+        }
+
+        function showSlide(index) {
+            document.querySelectorAll('.slide').forEach(slide => {
+                slide.classList.remove('active');
+            });
+            document.querySelectorAll('.slide')[index].classList.add('active');
+            currentSlide = index;
+        }
+
+        // ===================== АНИМАЦИИ =====================
+        function animateElements() {
+            anime({
+                targets: '.slide',
+                opacity: [0, 1],
+                translateY: [20, 0],
+                delay: anime.stagger(100),
+                duration: 800
+            });
+
+            document.querySelectorAll('.skill').forEach((skill, i) => {
+                anime({
+                    targets: skill,
+                    scale: [0.8, 1],
+                    opacity: [0, 1],
+                    delay: i * 100,
+                    duration: 600
+                });
+            });
+        }
+
+        // ===================== ИНИЦИАЛИЗАЦИЯ =====================
+        document.addEventListener('DOMContentLoaded', () => {
+            // Загрузка данных
+            if (localStorage.getItem('portfolioData')) {
+                const data = JSON.parse(localStorage.getItem('portfolioData'));
+                // ... загрузка данных в форму ...
+            }
+
+            // Инициализация AI
+            document.getElementById('ai-generate-btn').addEventListener('click', async () => {
+                const type = prompt("Что сгенерировать? (приветствие/о себе/проект)");
+                if (!type) return;
+                
+                document.getElementById('ai-loading').style.display = 'flex';
+                const prompt = `Сгенерируй текст для раздела "${type}" портфолио`;
+                
+                try {
+                    const aiText = await generateWithAI(type);
+                    if (type === 'приветствие') {
+                        document.getElementById('welcome-text').innerHTML = aiText;
+                    } else if (type === 'о себе') {
+                        document.getElementById('about-text').innerHTML = aiText;
+                    } else {
+                        document.querySelectorAll('.project-card p').forEach(p => {
+                            p.innerHTML = aiText;
+                        });
+                    }
+                } finally {
+                    document.getElementById('ai-loading').style.display = 'none';
+                }
+            });
+
+            // Презентация
+            document.getElementById('presentation-btn').addEventListener('click', startPresentation);
+            document.getElementById('next-slide').addEventListener('click', () => {
+                if (currentSlide < document.querySelectorAll('.slide').length - 1) {
+                    showSlide(currentSlide + 1);
+                }
+            });
+            document.getElementById('prev-slide').addEventListener('click', () => {
+                if (currentSlide > 0) {
+                    showSlide(currentSlide - 1);
+                }
+            });
+            document.getElementById('exit-presentation').addEventListener('click', () => {
+                document.body.classList.remove('presentation-mode');
+            });
+
+            // Анимация при загрузке
+            animateElements();
+        });
+
+        // Горячие клавиши
+        document.addEventListener('keydown', (e) => {
+            if (document.body.classList.contains('presentation-mode')) {
+                if (e.key === 'ArrowRight') {
+                    document.getElementById('next-slide').click();
+                } else if (e.key === 'ArrowLeft') {
+                    document.getElementById('prev-slide').click();
+                } else if (e.key === 'Escape') {
+                    document.getElementById('exit-presentation').click();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
